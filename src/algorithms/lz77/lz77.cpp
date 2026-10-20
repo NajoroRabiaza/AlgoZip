@@ -1,97 +1,84 @@
 #include "lz77.hpp"
+#include <algorithm>
+#include <stdexcept>
 
 namespace algozip {
-    LZ77Result lz77_encode(const std::string& input, int search_size, int lookahead_size) {
-        if (input.empty()) {
-            throw std::invalid_argument("Input string cannot be empty");
+
+LZ77Result lz77_encode(const std::string& input, int search_size, int lookahead_size) {
+    if (input.empty()) {
+        throw std::invalid_argument("Input string cannot be empty");
+    }
+    if (search_size <= 0 || lookahead_size <= 0) {
+        throw std::invalid_argument("Window sizes must be strictly positive");
+    }
+
+    LZ77Result result;
+    const int n = static_cast<int>(input.size());
+    int pos = 0;
+
+    while (pos < n) {
+        const int search_start = std::max(0, pos - search_size);
+        const int lookahead_end = std::min(n, pos + lookahead_size);
+        const int max_len = lookahead_end - pos;
+
+        int best_offset = 0;
+        int best_length = 0;
+
+        // Parcours du plus PROCHE au plus éloigné => en cas d'égalité
+        // de longueur, on garde le plus petit offset (moins coûteux en bits).
+        // C'est la convention qui fait apparaître (2,1,D) et non (5,1,D)
+        // dans l'exemple CABRACADABRARRARRAD du cours.
+        for (int i = pos - 1; i >= search_start; --i) {
+            if (best_length == max_len) break;  // déjà optimal
+            int len = 0;
+            // Overlap autorisé : input[i+len] peut dépasser pos.
+            while (len < max_len && input[i + len] == input[pos + len]) {
+                ++len;
+            }
+            if (len > best_length) {
+                best_length = len;
+                best_offset = pos - i;
+            }
         }
 
-        LZ77Result result;
-        int pos = 0;
-        int n = input.size();
-
-        while (pos < n) {
-            // definir les bornes du buffer de recherche
-            // on ne peut pas remonter avant le debut de la chaine
-            int search_start = std::max(0, pos - search_size);
-            int search_end = pos;
-
-            // definir les bornes du buffer d'entree
-            int lookahead_end = std::min(n, pos + lookahead_size);
-
-            int best_offset = 0;
-            int best_length = 0;
-
-            // chercher la plus longue correspondance dans le buffer de recherche
-            // on compare chaque position du buffer de recherche avec le debut du buffer d'entrer
-            for (int i = search_start; i< search_end; i++) {
-                int length = 0;
-
-                // compter combien de caracteres correspondent
-                // LZ77 permet le chevauchement : la correspondance peut 
-                // depasser la position courante (pos) dans la chaine
-                // c'est ce qui permet (3,5,D) dans CABRACADABRARRARRAD
-                while(length < lookahead_size && pos + length < n && input[i+length] == input[pos+length]) {
-                    length++;
-                }
-
-                // garder la plus longue correspondance trouver
-                if (length > best_length) {
-                    best_length = length;
-                    // offset est distance entre la position courante et le debut de la
-                    // correpondance dans le buffer de recherche
-                    best_offset = pos - i;
-                }
-            }
-
-            // construire le triplet
-            // si on est au dernier caractere et qu'on a une correspondance
-            // on emet le triplet sans caracteres suivant
-            char next_char = '\0';
-            if (pos + best_length < n) {
-                next_char = input[pos + best_length];
-            }
-
-            result.tokens.push_back({best_offset, best_length, next_char});
-
-            // avancer la chaine
-            // on saute la correspondance et le caractere suivant
+        if (pos + best_length < n) {
+            result.tokens.push_back({best_offset, best_length,
+                                     input[pos + best_length]});
             pos += best_length + 1;
+        } else {
+            // Le match va jusqu'à la fin : pas de "next".
+            result.tokens.push_back({best_offset, best_length, '\0'});
+            pos += best_length;
         }
-        return result;
+    }
+    return result;
+}
+
+std::string lz77_decode(const std::vector<LZ77Token>& tokens) {
+    if (tokens.empty()) {
+        throw std::invalid_argument("Tokens list cannot be empty");
     }
 
-    std::string lz77_decode(const std::vector<LZ77Token>& tokens) {
-        if (tokens.empty()) {
-            throw std::invalid_argument("Tokens list cannot be empty");
-        }
-
-        std::string decoded = "";
-
-        for (const LZ77Token& token : tokens) {
-            if (token.offset == 0 && token.length == 0) {
-                // pas de correspondance : emission directe du caractere
-                if(token.next != '\0') {
-                    decoded += token.next;
-                }
-            } else {
-                // corespondance trouver
-                // on recule de 'offset' positions dans le texte deja reconstruit
-                int start = decoded.size() - token.offset;
-
-                // on copie 'length' caracteres.
-                // copie possible caractere par caracteres
-                // car la la correspondance peut chevaucher la position courante
-                for (int i = 0; i < token.length; i++) {
-                    decoded += decoded[start + i];
-                }
-
-                // on ajoute le caractere suivant
-                if (token.next != '\0') {
-                    decoded += token.next;
-                }
+    std::string decoded;
+    for (const LZ77Token& t : tokens) {
+        if (t.length == 0) {
+            // Émission littérale (offset doit être 0 par construction)
+            if (t.offset != 0) {
+                throw std::invalid_argument("Non-zero offset with zero length");
             }
+            if (t.next != '\0') decoded += t.next;
+            continue;
         }
-        return decoded;
+        if (t.offset <= 0 || t.offset > static_cast<int>(decoded.size())) {
+            throw std::invalid_argument("Invalid offset in token");
+        }
+        const int start = static_cast<int>(decoded.size()) - t.offset;
+        for (int j = 0; j < t.length; ++j) {
+            decoded += decoded[start + j];   // overlap géré naturellement
+        }
+        if (t.next != '\0') decoded += t.next;
     }
+    return decoded;
+}
+
 }
