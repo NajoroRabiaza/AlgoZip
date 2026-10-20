@@ -8,8 +8,7 @@ using namespace algozip;
 
 // Helper : rejoue les tokens un par un et vérifie qu'ils collent au texte
 // original. Détecte les offsets/longueurs incohérents ET valide l'overlap.
-static void expect_tokens_match(const std::vector<LZ77Token>& tokens,
-                                const std::string& original) {
+static void expect_tokens_match(const std::vector<LZ77Token>& tokens, const std::string& original) {
     std::string built;
     for (size_t k = 0; k < tokens.size(); ++k) {
         const LZ77Token& t = tokens[k];
@@ -118,8 +117,8 @@ TEST(LZ77Encode, ABBBTTAY_IsConsistentAndCompresses) {
     const std::string s = "ABBBTTAYFGCABRYUIUUIACADABRARRARRAD";
     auto r = lz77_encode(s, 6, 6);
 
-    expect_tokens_match(r.tokens, s);         // cohérence token par token
-    EXPECT_LT(r.tokens.size(), s.size());      // compression effective
+    expect_tokens_match(r.tokens, s); // cohérence token par token
+    EXPECT_LT(r.tokens.size(), s.size()); // compression effective
     EXPECT_GE(r.tokens.size(), 1u);
 }
 
