@@ -1,0 +1,108 @@
+name: AlgoZip Demo Tests
+
+on:
+  workflow_dispatch:  # declenchement manuel
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libgtest-dev
+
+      - name: Build AlgoZip
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make algozip
+
+      - name: Download test files
+        run: |
+          mkdir -p demo
+          # Fichier texte : livre libre de droits
+          curl -L "https://www.gutenberg.org/files/1342/1342-0.txt" \
+               -o demo/test.txt
+          # Fichier image : image libre de droits
+          curl -L "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png" \
+               -o demo/test.png
+          # Fichier audio : wav libre de droits
+          curl -L "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" \
+               -o demo/test.wav || \
+          curl -L "https://upload.wikimedia.org/wikipedia/commons/4/4e/BWV_543-fugue.ogg" \
+               -o demo/test.ogg
+          # Fichier video : mp4 libre de droits
+          curl -L "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm" \
+               -o demo/test.webm || \
+          curl -L "https://sample-videos.com/video321/mp4/240/big_buck_bunny_240p_1mb.mp4" \
+               -o demo/test.mp4
+          ls -lh demo/
+
+      - name: Test TEXT compression bzip2
+        run: |
+          echo "========== TEXTE bzip2 =========="
+          ls -lh demo/test.txt
+          ./build/algozip compress --mode bzip2 demo/test.txt demo/text_bzip2.az
+          ./build/algozip decompress --mode bzip2 demo/text_bzip2.az demo/text_bzip2_result.txt
+          diff demo/test.txt demo/text_bzip2_result.txt && echo "bzip2 TEXT OK" || echo "bzip2 TEXT ERREUR"
+          ls -lh demo/text_bzip2.az
+
+      - name: Test TEXT compression lzma
+        run: |
+          echo "========== TEXTE lzma =========="
+          ./build/algozip compress --mode lzma demo/test.txt demo/text_lzma.az
+          ./build/algozip decompress --mode lzma demo/text_lzma.az demo/text_lzma_result.txt
+          diff demo/test.txt demo/text_lzma_result.txt && echo "lzma TEXT OK" || echo "lzma TEXT ERREUR"
+          ls -lh demo/text_lzma.az
+
+      - name: Test IMAGE compression bzip2
+        run: |
+          echo "========== IMAGE bzip2 =========="
+          ls -lh demo/test.png
+          ./build/algozip compress --mode bzip2 demo/test.png demo/img_bzip2.az
+          ./build/algozip decompress --mode bzip2 demo/img_bzip2.az demo/img_bzip2_result.png
+          diff demo/test.png demo/img_bzip2_result.png && echo "bzip2 IMAGE OK" || echo "bzip2 IMAGE ERREUR"
+          ls -lh demo/img_bzip2.az
+
+      - name: Test IMAGE compression lzma
+        run: |
+          echo "========== IMAGE lzma =========="
+          ./build/algozip compress --mode lzma demo/test.png demo/img_lzma.az
+          ./build/algozip decompress --mode lzma demo/img_lzma.az demo/img_lzma_result.png
+          diff demo/test.png demo/img_lzma_result.png && echo "lzma IMAGE OK" || echo "lzma IMAGE ERREUR"
+          ls -lh demo/img_lzma.az
+
+      - name: Test AUDIO compression bzip2
+        run: |
+          echo "========== AUDIO bzip2 =========="
+          ls -lh demo/test.wav || ls -lh demo/test.ogg
+          FILE=$(ls demo/test.wav demo/test.ogg 2>/dev/null | head -1)
+          ./build/algozip compress --mode bzip2 "$FILE" demo/audio_bzip2.az
+          ./build/algozip decompress --mode bzip2 demo/audio_bzip2.az demo/audio_bzip2_result
+          diff "$FILE" demo/audio_bzip2_result && echo "bzip2 AUDIO OK" || echo "bzip2 AUDIO ERREUR"
+          ls -lh demo/audio_bzip2.az
+
+      - name: Test VIDEO compression bzip2
+        run: |
+          echo "========== VIDEO bzip2 =========="
+          FILE=$(ls demo/test.mp4 demo/test.webm 2>/dev/null | head -1)
+          ls -lh "$FILE"
+          ./build/algozip compress --mode bzip2 "$FILE" demo/video_bzip2.az
+          ./build/algozip decompress --mode bzip2 demo/video_bzip2.az demo/video_bzip2_result
+          diff "$FILE" demo/video_bzip2_result && echo "bzip2 VIDEO OK" || echo "bzip2 VIDEO ERREUR"
+          ls -lh demo/video_bzip2.az
+
+      - name: Summary
+        run: |
+          echo "========== RESUME =========="
+          echo "Fichier original -> compresse -> ratio"
+          for f in demo/test.txt demo/test.png; do
+            orig=$(stat -c%s "$f")
+            comp=$(stat -c%s "${f%.*}_bzip2.az" 2>/dev/null || echo 0)
+            echo "$f : $orig bytes -> $comp bytes"
+          done
