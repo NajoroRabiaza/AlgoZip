@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Web interface for AlgoZip compression tool",
   "main": "server.js",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
