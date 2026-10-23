@@ -23,3 +23,8 @@ Makefile
 # OS
 .DS_Store
 Thumbs.db
+demo/
+web/uploads/
+web/results/
+web/node_modules/
+build/
