@@ -20,6 +20,7 @@ set(ALGO_SOURCES
     src/algorithms/arithmetic/arithmetic.cpp
     src/pipelines/bzip2_pipeline.cpp
     src/pipelines/lzma_pipeline.cpp
+    src/pipelines/7zip_pipeline.cpp
     src/utils/file_io.cpp
 )
 
@@ -49,6 +50,7 @@ target_link_libraries(test_unit gtest gtest_main)
 add_executable(test_integration
     tests/integration/test_bzip2_pipeline.cpp
     tests/integration/test_lzma_pipeline.cpp
+    tests/integration/test_7zip_pipeline.cpp
     ${ALGO_SOURCES}
 )
 
