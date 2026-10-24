@@ -1,0 +1,7 @@
+build/
+demo/
+web/node_modules/
+web/uploads/
+web/results/
+.git/
+*.md
