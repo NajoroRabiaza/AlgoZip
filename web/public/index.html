@@ -96,6 +96,14 @@
                     <div class="file-info" id="fileInfo">
                         <span class="file-name" id="fileName"></span>
                         <span class="file-size" id="fileSize"></span>
+                        <button onclick="clearFile()" style="
+                            background:none;
+                            border:none;
+                            color:#ff6b6b;
+                            cursor:pointer;
+                            font-size:16px;
+                            padding:0 4px;
+                        ">x</button>
                     </div>
                     <input type="file" id="fileInput" style="display:none"
                            onchange="handleFileSelect(event)">

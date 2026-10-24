@@ -253,3 +253,11 @@ function handleSSEData(data) {
             break;
     }
 }
+
+function clearFile() {
+    selectedFile = null;
+    document.getElementById('fileName').textContent = '';
+    document.getElementById('fileSize').textContent = '';
+    document.getElementById('fileInfo').classList.remove('visible');
+    document.getElementById('fileInput').value = '';
+}
