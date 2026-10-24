@@ -51,6 +51,7 @@ function selectMode(mode) {
     currentMode = mode;
     document.getElementById('btn-bzip2').classList.toggle('active', mode === 'bzip2');
     document.getElementById('btn-lzma').classList.toggle('active',  mode === 'lzma');
+    document.getElementById('btn-7zip').classList.toggle('active',  mode === '7zip');
 }
 
 // File handling
