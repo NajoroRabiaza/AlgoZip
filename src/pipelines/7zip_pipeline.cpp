@@ -4,10 +4,10 @@
 #include <stdexcept>
 #include <cstdint>
 #include <cstring>
+#include <map>
 
 namespace algozip {
 
-// Serialisation identique aux autres pipelines
 static void write_int(std::vector<uint8_t>& buf, int value) {
     buf.push_back((value >> 24) & 0xFF);
     buf.push_back((value >> 16) & 0xFF);
@@ -27,32 +27,33 @@ static int read_int(const std::vector<uint8_t>& buf, size_t& pos) {
     return value;
 }
 
-// Convertit les tokens LZ77 en chaine de caracteres
-// pour pouvoir appliquer Huffman dessus
-// On encode chaque token comme :
-// offset(2 bytes) + length(1 byte) + next(1 byte)
-// Ce qui donne une chaine de caracteres compressable par Huffman
-static std::string tokens_to_string(const std::vector<LZ77Token>& tokens) {
-    std::string result;
+// Convertit les tokens LZ77 en vecteur d octets
+// Chaque token = 5 octets :
+// [offset_hi][offset_lo][length][next_char][has_next]
+static std::vector<uint8_t> tokens_to_bytes(
+        const std::vector<LZ77Token>& tokens) {
+    std::vector<uint8_t> result;
     for (const LZ77Token& t : tokens) {
-        // Encoder offset sur 2 caracteres
-        result += static_cast<char>((t.offset >> 8) & 0xFF);
-        result += static_cast<char>(t.offset & 0xFF);
-        // Encoder length sur 1 caractere
-        result += static_cast<char>(t.length & 0xFF);
-        // Encoder next sur 1 caractere (0 si absent)
-        result += (t.next == '\0') ? static_cast<char>(0) : t.next;
+        result.push_back((t.offset >> 8) & 0xFF);
+        result.push_back(t.offset & 0xFF);
+        result.push_back(t.length & 0xFF);
+        result.push_back(t.next == '\0' ? 0x00 : (uint8_t)t.next);
+        result.push_back(t.next == '\0' ? 0x00 : 0x01);
     }
     return result;
 }
 
-// Reconstruit les tokens depuis la chaine
-static std::vector<LZ77Token> string_to_tokens(const std::string& s) {
+// Reconstruit les tokens depuis les octets
+static std::vector<LZ77Token> bytes_to_tokens(
+        const std::vector<uint8_t>& bytes, int num_tokens) {
     std::vector<LZ77Token> tokens;
-    for (size_t i = 0; i + 3 < s.size(); i += 4) {
-        int  offset = ((unsigned char)s[i] << 8) | (unsigned char)s[i + 1];
-        int  length = (unsigned char)s[i + 2];
-        char next   = s[i + 3];
+    for (int i = 0; i < num_tokens; i++) {
+        size_t pos = i * 5;
+        if (pos + 5 > bytes.size()) break;
+        int  offset   = ((int)bytes[pos] << 8) | (int)bytes[pos + 1];
+        int  length   = (int)bytes[pos + 2];
+        bool has_next = bytes[pos + 4] == 0x01;
+        char next     = has_next ? (char)bytes[pos + 3] : '\0';
         tokens.push_back({offset, length, next});
     }
     return tokens;
@@ -73,15 +74,16 @@ std::vector<uint8_t> sevenzip_compress(const std::string& input) {
     }
 
     // Etape 1 : LZ77 encode
-    // Identifie les repetitions et produit des triplets
     LZ77Result lz77 = lz77_encode(input, 6, 6);
 
-    // Etape 2 : Convertir les tokens en chaine de caracteres
-    // pour pouvoir appliquer Huffman
-    std::string tokens_str = tokens_to_string(lz77.tokens);
+    // Etape 2 : Convertir les tokens en octets
+    std::vector<uint8_t> tokens_bytes = tokens_to_bytes(lz77.tokens);
 
-    // Etape 3 : Huffman encode
-    // Compresse la representation des tokens
+    // Etape 3 : Convertir en string pour Huffman
+    // On utilise les octets directement comme symboles
+    std::string tokens_str(tokens_bytes.begin(), tokens_bytes.end());
+
+    // Etape 4 : Huffman encode
     HuffmanResult huff = huffman_encode(tokens_str);
 
     // Construire le bloc compresse
@@ -163,17 +165,20 @@ std::string sevenzip_decompress(const std::vector<uint8_t>& compressed) {
         }
     }
 
-    // Etape 1 : Huffman decode
+    // Etape 1 : Huffman decode --> retrouve les octets des tokens
     std::string tokens_str = huffman_decode(encoded_bits, huff_ref.codebook);
 
-    // Etape 2 : Reconstruire les tokens LZ77
-    std::vector<LZ77Token> tokens = string_to_tokens(tokens_str);
+    // Etape 2 : Convertir la string en octets
+    std::vector<uint8_t> tokens_bytes(tokens_str.begin(), tokens_str.end());
+
+    // Etape 3 : Reconstruire les tokens LZ77
+    std::vector<LZ77Token> tokens = bytes_to_tokens(tokens_bytes, num_tokens);
 
     if (static_cast<int>(tokens.size()) != num_tokens) {
-        throw std::runtime_error("Token count mismatch after decompression");
+        throw std::runtime_error("Token count mismatch");
     }
 
-    // Etape 3 : LZ77 decode
+    // Etape 4 : LZ77 decode
     return lz77_decode(tokens);
 }
 

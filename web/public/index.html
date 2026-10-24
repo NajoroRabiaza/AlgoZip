@@ -39,6 +39,10 @@
                     <span class="method-badge method-post">POST</span>
                     <span class="sidebar-item-label">/compress/lzma</span>
                 </div>
+                <div class="sidebar-item" onclick="selectAction('compress', '7zip', this)">
+                    <span class="method-badge method-post">POST</span>
+                    <span class="sidebar-item-label">/compress/7zip</span>
+                </div>
             </div>
 
             <div class="sidebar-section">
@@ -50,6 +54,10 @@
                 <div class="sidebar-item" onclick="selectAction('decompress', 'lzma', this)">
                     <span class="method-badge method-post">POST</span>
                     <span class="sidebar-item-label">/decompress/lzma</span>
+                </div>
+                <div class="sidebar-item" onclick="selectAction('decompress', '7zip', this)">
+                    <span class="method-badge method-post">POST</span>
+                    <span class="sidebar-item-label">/decompress/7zip</span>
                 </div>
             </div>
 
@@ -104,6 +112,10 @@
                         <div class="select-btn" id="btn-lzma"
                              onclick="selectMode('lzma')">
                             lzma
+                        </div>
+                        <div class="select-btn" id="btn-7zip"
+                             onclick="selectMode('7zip')">
+                            7zip
                         </div>
                     </div>
                 </div>

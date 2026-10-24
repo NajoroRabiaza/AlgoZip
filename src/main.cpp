@@ -6,6 +6,7 @@
 #include <cstring>
 #include "pipelines/bzip2_pipeline.hpp"
 #include "pipelines/lzma_pipeline.hpp"
+#include "pipelines/7zip_pipeline.hpp"
 #include "utils/file_io.hpp"
 
 using namespace algozip;
@@ -33,13 +34,15 @@ static int read_int(const std::vector<uint8_t>& buf, size_t& pos) {
 
 static void print_usage() {
     std::cout << "Usage:\n"
-              << "  algozip compress   --mode [bzip2|lzma] <input> <output>\n"
-              << "  algozip decompress --mode [bzip2|lzma] <input> <output>\n"
+              << "  algozip compress   --mode [bzip2|lzma|7zip] <input> <output>\n"
+              << "  algozip decompress --mode [bzip2|lzma|7zip] <input> <output>\n"
               << "\nExamples:\n"
               << "  algozip compress   --mode bzip2 file.txt file.az\n"
               << "  algozip decompress --mode bzip2 file.az  file.txt\n"
               << "  algozip compress   --mode lzma  file.txt file.az\n"
-              << "  algozip decompress --mode lzma  file.az  file.txt\n";
+              << "  algozip decompress --mode lzma  file.az  file.txt\n"
+              << "  algozip compress   --mode 7zip  file.txt file.az\n"
+              << "  algozip decompress --mode 7zip  file.az  file.txt\n";
 }
 
 // Compresse un fichier par blocs
@@ -53,7 +56,6 @@ static void compress_file(
     const std::string& output_path,
     const std::string& mode
 ) {
-    // Collecter tous les blocs comprimes en memoire
     std::vector<std::vector<uint8_t>> compressed_blocks;
     size_t total_original = 0;
 
@@ -66,8 +68,10 @@ static void compress_file(
             std::vector<uint8_t> compressed_block;
             if (mode == "bzip2") {
                 compressed_block = bzip2_compress(block);
-            } else {
+            } else if (mode == "lzma") {
                 compressed_block = lzma_compress(block);
+            } else {   // mode == "7zip"
+                compressed_block = sevenzip_compress(block);
             }
 
             compressed_blocks.push_back(compressed_block);
@@ -79,19 +83,16 @@ static void compress_file(
         }
     );
 
-    // Ecrire le fichier compresse
     std::ofstream out(output_path, std::ios::binary);
     if (!out.is_open()) {
         throw std::runtime_error("Cannot write: " + output_path);
     }
 
-    // Ecrire le nombre de blocs
     std::vector<uint8_t> header;
     write_int(header, static_cast<int>(compressed_blocks.size()));
     out.write(reinterpret_cast<const char*>(header.data()), header.size());
 
-    // Ecrire chaque bloc avec sa taille
-    size_t total_compressed = 4; // header
+    size_t total_compressed = 4;
     for (const auto& block : compressed_blocks) {
         std::vector<uint8_t> block_header;
         write_int(block_header, static_cast<int>(block.size()));
@@ -104,7 +105,9 @@ static void compress_file(
 
     std::cout << "Original size    : " << total_original << " bytes\n";
     std::cout << "Compressed size  : " << total_compressed << " bytes\n";
-    double ratio = 100.0 * total_compressed / total_original;
+    double ratio = total_original == 0
+        ? 0.0
+        : 100.0 * static_cast<double>(total_compressed) / total_original;
     std::cout << "Compression ratio: " << ratio << "%\n";
     std::cout << "Blocks           : " << compressed_blocks.size() << "\n";
     std::cout << "Output written to: " << output_path << "\n";
@@ -133,6 +136,10 @@ static void decompress_file(
     for (int i = 0; i < num_blocks; i++) {
         int block_size = read_int(compressed, pos);
 
+        if (pos + block_size > compressed.size()) {
+            throw std::runtime_error("Truncated block in input file");
+        }
+
         std::vector<uint8_t> block(
             compressed.begin() + pos,
             compressed.begin() + pos + block_size
@@ -142,8 +149,10 @@ static void decompress_file(
         std::string decompressed_block;
         if (mode == "bzip2") {
             decompressed_block = bzip2_decompress(block);
-        } else {
+        } else if (mode == "lzma") {
             decompressed_block = lzma_decompress(block);
+        } else {   // mode == "7zip"
+            decompressed_block = sevenzip_decompress(block);
         }
 
         out.write(decompressed_block.data(), decompressed_block.size());
@@ -177,8 +186,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (mode != "bzip2" && mode != "lzma") {
-        std::cerr << "Error: mode must be 'bzip2' or 'lzma'\n";
+    if (mode != "bzip2" && mode != "lzma" && mode != "7zip") {
+        std::cerr << "Error: mode must be 'bzip2', 'lzma' or '7zip'\n";
         print_usage();
         return 1;
     }
