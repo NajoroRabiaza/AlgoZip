@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: algozip
+    runtime: native
+    buildCommand: |
+      apt-get update -qq &&
+      apt-get install -y cmake build-essential libgtest-dev &&
+      mkdir -p build &&
+      cd build &&
+      cmake .. -DCMAKE_BUILD_TYPE=Release &&
+      make algozip -j$(nproc) &&
+      cd ../web &&
+      npm install -g pnpm &&
+      pnpm install
+    startCommand: cd web && node server.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: ALGOZIP_BINARY
+        value: ../build/algozip
+      - key: NODE_ENV
+        value: production
