@@ -68,42 +68,44 @@ make test_integration
 
 ## Test results
 
-BWT : 9 tests passed
-Huffman : 11 tests passed
-LZ77 : 13 tests passed
-Arithmetic : 15 tests passed
-bzip2 : 5 tests passed
-lzma : 5 tests passed
-7zip : 5 tests passed
-Total : 63 tests passed
-
+```
+BWT         :  9 tests passed
+Huffman     : 11 tests passed
+LZ77        : 13 tests passed
+Arithmetic  : 15 tests passed
+bzip2       :  5 tests passed
+lzma        :  5 tests passed
+7zip        :  5 tests passed
+Total       : 63 tests passed
+```
 
 ## Project structure
 
+```
 AlgoZip/
 ├── src/
-│ ├── main.cpp
-│ ├── algorithms/
-│ │ ├── bwt/
-│ │ ├── huffman/
-│ │ ├── lz77/
-│ │ └── arithmetic/
-│ ├── pipelines/
-│ │ ├── bzip2_pipeline/
-│ │ ├── lzma_pipeline/
-│ │ └── sevenzip_pipeline/
-│ └── utils/
+│   ├── main.cpp
+│   ├── algorithms/
+│   │   ├── bwt/
+│   │   ├── huffman/
+│   │   ├── lz77/
+│   │   └── arithmetic/
+│   ├── pipelines/
+│   │   ├── bzip2_pipeline/
+│   │   ├── lzma_pipeline/
+│   │   └── sevenzip_pipeline/
+│   └── utils/
 ├── tests/
-│ ├── unit/
-│ └── integration/
+│   ├── unit/
+│   └── integration/
 ├── web/
-│ ├── server.js
-│ └── public/
+│   ├── server.js
+│   └── public/
 ├── .github/
-│ └── workflows/
-│ └── demo.yml
+│   └── workflows/
+│       └── demo.yml
 └── Dockerfile
-
+```
 
 ## Web interface
 
